@@ -1,6 +1,7 @@
-var express = require('express');
-var bodyParser = require('body-parser');
-var{ObjectID} = require('mongodb');
+const _ = require('lodash');
+const express = require('express');
+const bodyParser = require('body-parser');
+const {ObjectID} = require('mongodb');
 
 // ES6 destructuring - creating a local variable called mongoose equal to the mongoose property on the object
 var {mongoose} = require('./db/mongoose');
@@ -53,11 +54,7 @@ app.get('/todos/:id', (req, res) => {
     }); 
 });
 
-app.listen(port, () => {
-    console.log(`Started up at port ${port}`);
-});
-
-// DELETE
+// DELETE todos
 app.delete('/todos/:id', (req, res) => {
     var id = req.params.id;
 
@@ -73,6 +70,38 @@ app.delete('/todos/:id', (req, res) => {
     }).catch((e) => {
         res.status(400).send();
     })
+});
+
+// Update route (uses HTTP patch method)
+app.patch('/todos/:id', (req, res) => {
+    var id = req.params.id;
+    var body = _.pick(req.body, ['text', 'completed']);
+
+    if(!ObjectID.isValid(id)) {
+        return res.status(404).send();
+    }
+
+    if (_.isBoolean(body.completed) && body.completed) {
+        body.completedAt = new Date().getTime();
+    } else {
+        body.completed = false;
+        body.completedAt = null;
+    }
+
+    Todo.findByIdAndUpdate(id, {$set: body}, {new: true}).then((todo) => {
+        if (!todo) {
+            return res.status(404).send();           
+        }
+
+        res.send({todo});
+    }).catch((e) => {
+        res.status(400).send();      
+    })
+});
+
+
+app.listen(port, () => {
+    console.log(`Started up at port ${port}`);
 });
 
 module.exports = {app};
