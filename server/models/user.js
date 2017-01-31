@@ -40,6 +40,7 @@ UserSchema.methods.toJSON = function () {
 };
 
 UserSchema.methods.generateAuthToken = function () {
+    // instance methods get called with the individual document
     var user = this;
     var access = 'auth';
     var token = jwt.sign({_id: user._id.toHexString(), access}, 'abc123').toString();
@@ -48,6 +49,27 @@ UserSchema.methods.generateAuthToken = function () {
     // in order to allow server.js to chain onto the promise, return user.save.then
     return user.save().then(() => {
         return token;
+    });
+};
+
+UserSchema.statics.findByToken = function (token) {
+    // model methods get called with the model as the this binding
+    var User = this;
+    var decoded;
+
+    try {
+        decoded = jwt.verify(token, 'abc123');
+    } catch(e) {
+        return new Promise((resolve, reject) => {
+            reject();
+        });
+    }
+
+    // try success case
+    return User.findOne({
+       '_id': decoded._id,
+       'tokens.token': token,
+       'tokens.access': 'auth' 
     });
 };
 
